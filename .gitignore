@@ -1,6 +1,11 @@
 bin/
 obj/
 config.json
-bot.log
-bot-err.log
+*.log
 *.user
+*.exe
+*.dll
+*.pdb
+*.deps.json
+*.runtimeconfig.json
+edits.json
