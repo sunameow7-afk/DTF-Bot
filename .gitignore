@@ -1,0 +1,6 @@
+bin/
+obj/
+config.json
+bot.log
+bot-err.log
+*.user
