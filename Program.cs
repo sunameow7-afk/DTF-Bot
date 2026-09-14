@@ -169,7 +169,7 @@ namespace DTFBot
                 .AddField("\uD83D\uDD25 What is DTF",
                     "50+ one-click cleaners that wipe forensic traces, browser history, memory and junk — then cleans its own tracks on exit.", false)
                 .AddField("\uD83D\uDCCD Start here",
-                    "\u2022 Read " + "/rules" + " — bawal ang key sharing at scamming\n" +
+                    "\u2022 Read **#rules** — bawal ang key sharing at scamming\n" +
                     "\u2022 Type **/dtf** anywhere — full showcase + pricelist\n" +
                     "\u2022 Click **PURCHASE HERE** — private ticket opens, doon ang bayaran at key", false)
                 .AddField("\uD83D\uDCB0 Plans",
@@ -178,7 +178,6 @@ namespace DTFBot
                     "Respeto. Loyalty. Walang scam.\n" +
                     "Dito walang palusot — ang nag-share ng key, permanently banned.", false)
                 .WithImageUrl("https://dtf-license.onrender.com/assets/banner.png?v=2")
-                .WithFooter("DTF \u00b7 dtf-license.onrender.com \u00b7 welcome to the barrio")
                 .Build();
         }
 
@@ -271,10 +270,10 @@ namespace DTFBot
                 .WithUrl(base_)
                 .WithThumbnailUrl(EditStore.Get("dtf", "logo") ?? base_ + "/assets/logo.png?v=2")
                 .WithDescription(EditStore.Get("dtf", "msg") ??
-                    "**Your PC remembers everything. DTF makes it forget.**\n\n" +
-                    "50+ one-click cleaners that wipe activity logs, forensic artifacts and junk — then cleans its own tracks on exit.\n\n" +
-                    "Type **/features** for the full cleaner list\n" +
-                    "Type **/howitworks** for what each cleaner does")
+                    "**Your PC remembers everything. DTF makes it forget.**\n" +
+                    "50+ one-click cleaners that wipe every trace on your PC — then cleans its own tracks on exit.\n\n" +
+                    "`/features` · full cleaner list\n" +
+                    "`/howitworks` · what each cleaner does")
                 .AddField("◆ PRICELIST",
                     "• `₱ 400  | 30 days`\n" +
                     "• `₱ 700  | 90 days`\n" +
@@ -291,7 +290,7 @@ namespace DTFBot
                 .WithColor(new Discord.Color(124, 58, 237))
                 .WithTitle(EditStore.Get("features", "title") ?? "DTF — FEATURES")
                 .WithThumbnailUrl(EditStore.Get("features", "logo") ?? "https://dtf-license.onrender.com/assets/logo.png?v=2")
-                .WithDescription(EditStore.Get("features", "msg") ?? "Everything DTF can clean — 50+ one-click buttons.")
+                .WithDescription(EditStore.Get("features", "msg") ?? "Everything DTF can clean — one click each.")
                 .AddField("◆ FEATURES",
                     "```Windows Temp\n" +
                     "Prefetch\n" +
@@ -319,7 +318,6 @@ namespace DTFBot
                     "Self-Destruct\n" +
                     "Anti-Screenshot```", false)
                 .WithImageUrl(EditStore.Get("features", "image") ?? "https://dtf-license.onrender.com/assets/banner.png?v=2")
-                .WithFooter("/howitworks — what each cleaner does")
                 .Build();
         }
 
@@ -369,7 +367,6 @@ namespace DTFBot
                     "• **Self-Destruct** — one button deletes DTF completely\n" +
                     "• **Anti-Screenshot** — invisible to screen captures", false)
                 .WithImageUrl(EditStore.Get("howitworks", "image") ?? "https://dtf-license.onrender.com/assets/banner.png?v=2")
-                .WithFooter(EditStore.Get("howitworks", "footer") ?? "/dtf — showcase and pricelist")
                 .Build();
         }
 
@@ -424,7 +421,7 @@ namespace DTFBot
                         var (ok, key, err) = await LicenseApi.CreateKey(clientName, (int)Math.Clamp(days, 1, 3650), hwid);
                         if (!ok) { await cmd.RespondAsync($"✗ {err}", ephemeral: true); return; }
                         await cmd.RespondAsync(
-                            $"✅ Key for **{clientName}** — {days} day(s)\n`{key}`\n\nSend this in their ticket. Key also copied note: use the 🔑 Keys site tab if you need HWID-bind later.",
+                            $"✅ Key for **{clientName}** — {days} day(s)\n`{key}`\n\nSend this in their ticket. Need a HWID change later? Use the 🔑 Keys tab on the site.",
                             ephemeral: true);
                         return;
                     }
@@ -448,7 +445,6 @@ namespace DTFBot
                             .WithColor(new Discord.Color(139, 92, 246))
                             .WithTitle($"🔑 Keys ({keys.GetArrayLength()} total)")
                             .WithDescription(sb.ToString())
-                            .WithFooter("full list: admin panel · use /ban /unban /reset with the full key")
                             .Build();
                         await cmd.RespondAsync(embed: embed, ephemeral: true);
                         return;
@@ -737,7 +733,6 @@ namespace DTFBot
                         "2️⃣ Send your payment (GCash / Maya) and screenshot the receipt here.\n" +
                         "3️⃣ Staff verifies and drops your key in this ticket.\n\n" +
                         "Your key activates on ONE PC. Keep it private!")
-                    .WithFooter("DTF Tickets · staff will reply shortly")
                     .Build();
 
                 await channel.SendMessageAsync(

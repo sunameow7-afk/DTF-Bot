@@ -82,10 +82,9 @@ else
 {"embeds":[{"title":"DTF SERVER RULES","color":8141549,
 "description":"Keep it clean. One strike for scams, key sharing or chargebacks.",
 "fields":[
-{"name":"The Rules","value":"1. **No key sharing or reselling** - keys are locked to one PC. Sharing = permanent ban + blacklisted HWID, no refund.\n2. **No fake payment receipts** - scamming = instant ban, no appeals.\n3. **Purchases in tickets only** - use /dtf and click PURCHASE HERE; a private ticket opens. Do not DM staff.\n4. **No spam or begging** for free keys.\n5. **One PC per key** - new PC? Open a ticket for a HWID reset.\n6. **Chargebacks = permanent blacklist.**\n7. Discord ToS applies.","inline":false},
-{"name":"Roles","value":"\ud83d\udfe1 **DTF Owner** - the boss.\n\ud83d\udfe3 **DTF Admin** - staff, runs tickets and keys.\n\ud83d\udc9c **DTF Client** - you, after buying. Proof you own access.","inline":false}
-],
-"footer":{"text":"DTF - dtf-license.onrender.com"}}]}
+{"name":"The Rules","value":"1. **No key sharing or reselling** - keys are locked to one PC. Sharing = permanent ban + blacklisted HWID, no refund.\n2. **No fake payment receipts** - scamming = instant ban, no appeals.\n3. **Purchases in tickets only** - use /dtf and click PURCHASE HERE; a private ticket opens. Do not DM staff.\n4. **No spam or begging** for free keys.\n5. **One PC per key** - new PC? Open a ticket for a HWID reset.\n6. **Chargebacks = permanent blacklist.**\n7. Discord ToS applies.","inline":false}
+]}
+]}
 EOF
   R=$(api POST "/channels/$RULES/messages" "$TMP/rules.json")
   MID=$(getid "$R")
@@ -102,8 +101,8 @@ if [ "$EXISTS" = "yes" ]; then
 else
   cat > "$TMP/dl.json" <<'EOF'
 {"embeds":[{"title":"HOW TO GET DTF","color":9133302,
-"description":"1. Buy in a ticket - use /dtf, click PURCHASE HERE\n2. Pay GCash / Maya, send the receipt in your ticket\n3. Staff drops your key + the DTF build in the ticket\n4. Paste the key in DTF - it binds to your PC\n\n**Updates:** DTF updates itself on launch - when a new build ships you get an UPDATE banner, one click and you are current.\n\n**Never download DTF from anywhere else.**",
-"footer":{"text":"dtf-license.onrender.com"}}]}
+"description":"1. Buy in a ticket - use /dtf, click PURCHASE HERE\n2. Pay GCash / Maya, send the receipt in your ticket\n3. Staff drops your key + the DTF build in the ticket\n4. Paste the key in DTF - it binds to your PC\n\n**Updates:** DTF updates itself on launch - when a new build ships you get an UPDATE banner, one click and you are current.\n\n**Never download DTF from anywhere else.**"
+}]}
 EOF
   R=$(api POST "/channels/$DL/messages" "$TMP/dl.json")
   if echo "$R" | grep -q '"id"'; then echo "downloads embed: posted"; else echo "downloads embed FAILED: $R"; fi

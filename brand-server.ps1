@@ -34,7 +34,7 @@ $assets = 'C:/Users/Echague/Documents/coding/DTF-License/wwwroot/assets'
 try {
     Api PATCH "/guilds/$guild" @{
         icon = (DataUri "$assets/logo.png")
-        description = 'DTF - Deep Trace Fix. Wipe forensic traces, browser history, memory. Buy in a ticket - dtf-license.onrender.com'
+        description = 'DTF. Wipe forensic traces, browser history, memory. Buy in a ticket - dtf-license.onrender.com'
     } | Out-Null
     Write-Output 'server icon + description: OK'
 } catch { Write-Output ("server icon FAILED: " + $_.ErrorDetails.Message) }
