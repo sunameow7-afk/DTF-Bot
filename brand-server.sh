@@ -1,6 +1,7 @@
 #!/bin/bash
 # DTF server branding via curl (PowerShell chokes on some endpoints with 40333)
-TOKEN=REPLACE_FROM_CONFIG
+# Token is read from config.json - never hardcoded
+TOKEN=$(powershell -NoProfile -Command "(Get-Content \"$PSScriptRoot/config.json\" | ConvertFrom-Json).token" | tr -d '\r')
 G="1548307046200385678"
 API="https://discord.com/api/v10"
 ASSETS="C:/Users/Echague/Documents/coding/DTF-License/wwwroot/assets"
