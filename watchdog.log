@@ -55,3 +55,7 @@
 2026-09-14 20:25:07  bot NOT running -> restarting...
 2026-09-14 20:25:15  restart OK (PID 14128)
 2026-09-14 20:25:25  bot is running (PID 14128)
+2026-09-14 20:33:35  watchdog started - checking every 10s
+2026-09-14 20:33:35  bot NOT running -> restarting...
+2026-09-14 20:33:43  restart OK (PID 19876)
+2026-09-14 20:33:53  bot is running (PID 19876)

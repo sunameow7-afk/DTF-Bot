@@ -120,6 +120,7 @@ namespace DTFBot
                     .Build(),
                 new Discord.SlashCommandBuilder().WithName("stats").WithDescription("Quick business stats").Build(),
                 new Discord.SlashCommandBuilder().WithName("welcometest").WithDescription("Preview the welcome embed (admin)").Build(),
+                new Discord.SlashCommandBuilder().WithName("vouch").WithDescription("Post the review/vouch session announcement (admin)").Build(),
             };
             await guild.BulkOverwriteApplicationCommandAsync(cmds.ToArray());
             Console.WriteLine("[bot] slash commands registered");
@@ -168,6 +169,29 @@ namespace DTFBot
                     "Dito walang palusot — ang nag-share ng key, permanently banned.", false)
                 .WithImageUrl("https://dtf-license.onrender.com/assets/banner.png?v=2")
                 .WithFooter("DTF \u00b7 dtf-license.onrender.com \u00b7 welcome to the barrio")
+                .Build();
+        }
+
+        private static Discord.Embed BuildVouch()
+        {
+            return new Discord.EmbedBuilder()
+                .WithColor(new Discord.Color(124, 58, 237))
+                .WithTitle("\uD83D\uDC9C DTF REVIEW / VOUCH SESSION")
+                .WithThumbnailUrl("https://dtf-license.onrender.com/assets/logo.png?v=2")
+                .WithDescription(
+                    "**Think DTF is worth it? Let everyone know.**\n\n" +
+                    "We're hosting a **Review & Vouch Session** for all DTF clients.")
+                .AddField("\uD83D\uDCCB How to participate",
+                    "\u2022 Share your honest experience with DTF\n" +
+                    "\u2022 Post your vouch/review in the designated channel\n" +
+                    "\u2022 Include what you liked about the service\n" +
+                    "\u2022 Screenshots or proof are welcome\n" +
+                    "\u2022 No fake or misleading reviews", false)
+                .AddField("\uD83D\uDC9C Why it matters",
+                    "Your feedback helps DTF grow.\n" +
+                    "**Real clients. Real reviews. Real experiences.**", false)
+                .WithImageUrl("https://dtf-license.onrender.com/assets/banner.png?v=2")
+                .WithFooter("DTF Built Different. \uD83D\uDC9C")
                 .Build();
         }
 
@@ -454,6 +478,15 @@ namespace DTFBot
                         string key = Opt(cmd, "key") ?? "";
                         await LicenseApi.ResetHwid(key);
                         await cmd.RespondAsync($"♻️ HWID reset for `{key}` — client can activate on a new PC now.", ephemeral: true);
+                        return;
+                    }
+
+                    case "vouch":
+                    {
+                        await cmd.DeferAsync();
+                        var msg = await cmd.Channel.SendMessageAsync(embed: BuildVouch());
+                        try { await msg.PinAsync(); } catch { }
+                        await cmd.FollowupAsync("\uD83D\uDCCC Vouch session posted and pinned.", ephemeral: true);
                         return;
                     }
 
