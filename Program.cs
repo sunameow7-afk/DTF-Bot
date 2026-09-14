@@ -18,6 +18,7 @@ namespace DTFBot
         private static async Task Main(string[] args)
         {
             Cfg.LoadFile();
+            EditStore.Load();
 
             if (string.IsNullOrWhiteSpace(Cfg.BotToken))
             {
@@ -73,6 +74,7 @@ namespace DTFBot
 
             _client.Log += m => { Console.WriteLine($"[bot] {m}"); return Task.CompletedTask; };
             _client.UserJoined += OnUserJoined;
+            _client.ModalSubmitted += OnModal;
             _client.Ready += OnReady;
             _client.SlashCommandExecuted += OnSlash;
             _client.ButtonExecuted += OnButton;
@@ -121,6 +123,14 @@ namespace DTFBot
                 new Discord.SlashCommandBuilder().WithName("stats").WithDescription("Quick business stats").Build(),
                 new Discord.SlashCommandBuilder().WithName("welcometest").WithDescription("Preview the welcome embed (admin)").Build(),
                 new Discord.SlashCommandBuilder().WithName("vouch").WithDescription("Post the review/vouch session announcement (admin)").Build(),
+                new Discord.SlashCommandBuilder().WithName("edit")
+                    .WithDescription("Edit a bot message + image (admin)")
+                    .AddOption(new Discord.SlashCommandOptionBuilder()
+                        .WithName("command").WithDescription("which message to edit").WithType(Discord.ApplicationCommandOptionType.String).WithRequired(true)
+                        .AddChoice("dtf showcase", "dtf")
+                        .AddChoice("features list", "features")
+                        .AddChoice("how it works", "howitworks"))
+                    .Build(),
             };
             await guild.BulkOverwriteApplicationCommandAsync(cmds.ToArray());
             Console.WriteLine("[bot] slash commands registered");
@@ -257,10 +267,11 @@ namespace DTFBot
             const string base_ = "https://dtf-license.onrender.com";
             return new Discord.EmbedBuilder()
                 .WithColor(new Discord.Color(124, 58, 237))
-                .WithTitle("DTF")
+                .WithTitle(EditStore.Get("dtf", "title") ?? "DTF")
                 .WithUrl(base_)
-                .WithThumbnailUrl(base_ + "/assets/logo.png?v=2")
-                .WithDescription("**Your PC remembers everything. DTF makes it forget.**\n\n" +
+                .WithThumbnailUrl(EditStore.Get("dtf", "logo") ?? base_ + "/assets/logo.png?v=2")
+                .WithDescription(EditStore.Get("dtf", "msg") ??
+                    "**Your PC remembers everything. DTF makes it forget.**\n\n" +
                     "50+ one-click cleaners that wipe activity logs, forensic artifacts and junk — then cleans its own tracks on exit.\n\n" +
                     "Type **/features** for the full cleaner list\n" +
                     "Type **/howitworks** for what each cleaner does")
@@ -270,7 +281,7 @@ namespace DTFBot
                     "• `₱ 1200 | Lifetime`", false)
                 .AddField("◆ HOW TO BUY",
                     "Click **PURCHASE HERE** → a private ticket opens → pay GCash/Maya → key drops in your ticket.", false)
-                .WithImageUrl(base_ + "/assets/banner.png?v=2")
+                .WithImageUrl(EditStore.Get("dtf", "image") ?? base_ + "/assets/banner.png?v=2")
                 .Build();
         }
 
@@ -278,9 +289,9 @@ namespace DTFBot
         {
             return new Discord.EmbedBuilder()
                 .WithColor(new Discord.Color(124, 58, 237))
-                .WithTitle("DTF — FEATURES")
-                .WithThumbnailUrl("https://dtf-license.onrender.com/assets/logo.png?v=2")
-                .WithDescription("Everything DTF can clean — 50+ one-click buttons.")
+                .WithTitle(EditStore.Get("features", "title") ?? "DTF — FEATURES")
+                .WithThumbnailUrl(EditStore.Get("features", "logo") ?? "https://dtf-license.onrender.com/assets/logo.png?v=2")
+                .WithDescription(EditStore.Get("features", "msg") ?? "Everything DTF can clean — 50+ one-click buttons.")
                 .AddField("◆ FEATURES",
                     "```Windows Temp\n" +
                     "Prefetch\n" +
@@ -307,7 +318,7 @@ namespace DTFBot
                     "Exit Auto-Clean\n" +
                     "Self-Destruct\n" +
                     "Anti-Screenshot```", false)
-                .WithImageUrl("https://dtf-license.onrender.com/assets/banner.png?v=2")
+                .WithImageUrl(EditStore.Get("features", "image") ?? "https://dtf-license.onrender.com/assets/banner.png?v=2")
                 .WithFooter("/howitworks — what each cleaner does")
                 .Build();
         }
@@ -316,9 +327,9 @@ namespace DTFBot
         {
             return new Discord.EmbedBuilder()
                 .WithColor(new Discord.Color(124, 58, 237))
-                .WithTitle("DTF — HOW IT WORKS")
-                .WithThumbnailUrl("https://dtf-license.onrender.com/assets/logo.png?v=2")
-                .WithDescription("Every button in the app, explained.")
+                .WithTitle(EditStore.Get("howitworks", "title") ?? "DTF — HOW IT WORKS")
+                .WithThumbnailUrl(EditStore.Get("howitworks", "logo") ?? "https://dtf-license.onrender.com/assets/logo.png?v=2")
+                .WithDescription(EditStore.Get("howitworks", "msg") ?? "Every button in the app, explained.")
                 .AddField("🧹 Core Cleanup",
                     "The everyday stuff that slows your PC and leaves trails.\n" +
                     "• **Windows Temp** — today's temp files only, old ones untouched\n" +
@@ -357,8 +368,8 @@ namespace DTFBot
                     "• **Exit Auto-Clean** — wipes its own run-traces on close\n" +
                     "• **Self-Destruct** — one button deletes DTF completely\n" +
                     "• **Anti-Screenshot** — invisible to screen captures", false)
-                .WithImageUrl("https://dtf-license.onrender.com/assets/banner.png?v=2")
-                .WithFooter("/dtf — showcase and pricelist")
+                .WithImageUrl(EditStore.Get("howitworks", "image") ?? "https://dtf-license.onrender.com/assets/banner.png?v=2")
+                .WithFooter(EditStore.Get("howitworks", "footer") ?? "/dtf — showcase and pricelist")
                 .Build();
         }
 
@@ -481,6 +492,13 @@ namespace DTFBot
                         return;
                     }
 
+                    case "edit":
+                    {
+                        string editTarget = Opt(cmd, "command") ?? "dtf";
+                        await SendEditor(cmd, editTarget);
+                        return;
+                    }
+
                     case "vouch":
                     {
                         await cmd.DeferAsync();
@@ -531,7 +549,46 @@ namespace DTFBot
 
         private static async Task OnButton(SocketMessageComponent cmd)
         {
-            if (cmd.Data.CustomId == "dtf_ticket_direct")
+            string cid = cmd.Data.CustomId ?? "";
+
+            // ----- editor buttons (edit_<part>:<target> and editmodal routing) -----
+            if (cid.StartsWith("edit_") && cid.Contains(':'))
+            {
+                var seg = cid.Split(':');
+                string part = seg[0].Substring(5);   // after "edit_"
+                string target = seg.Length > 1 ? seg[1] : "dtf";
+
+                if (part == "preview")
+                {
+                    Discord.Embed preview = target switch
+                    {
+                        "features" => BuildFeatures(),
+                        "howitworks" => BuildHowItWorks(),
+                        _ => BuildShowcase()
+                    };
+                    await cmd.RespondAsync(embed: preview, ephemeral: true);
+                    return;
+                }
+                if (part == "reset")
+                {
+                    foreach (var p in new[] { "msg", "title", "image", "logo", "footer" }) EditStore.Set(target, p, null);
+                    await cmd.UpdateAsync(m => { m.Embed = BuildEditorEmbed(target); m.Components = EditorButtons(target); });
+                    return;
+                }
+
+                string current = EditStore.Get(target, part) ?? "";
+                string label = part == "msg" ? "Message text (Discord markdown allowed)" : char.ToUpper(part[0]) + part.Substring(1);
+                var modal = new Discord.ModalBuilder()
+                    .WithCustomId($"editmodal_{part}:{target}")
+                    .WithTitle("Edit " + target)
+                    .AddTextInput(label, $"editmodal_{part}:{target}",
+                        part == "msg" ? Discord.TextInputStyle.Paragraph : Discord.TextInputStyle.Short,
+                        null, null, part == "msg" ? 2000 : 1000, true);
+                await cmd.RespondWithModalAsync(modal.Build());
+                return;
+            }
+
+            if (cid == "dtf_ticket_direct")
             {
                 await CreateTicketAsync(cmd);
             }
@@ -548,6 +605,76 @@ namespace DTFBot
                 await cmd.RespondAsync(
                     "**How DTF works**\n1️⃣ Purchase → get a key in your ticket\n2️⃣ Run DTF → paste your key → it activates to your PC\n3️⃣ Clean everything with one click\n\nEvery key is locked to one PC. Need to move PCs? Ask staff for a HWID reset.",
                     ephemeral: true);
+            }
+        }
+
+        // ---------------- /edit message editor ----------------
+
+        private static readonly string[] _editableCommands = { "dtf", "features", "howitworks" };
+
+        private static bool IsAdminUser(SocketSlashCommand cmd)
+            => Cfg.AdminRoleId == 0 || (cmd.User is SocketGuildUser gu && gu.Roles.Any(r => r.Id == Cfg.AdminRoleId));
+
+        private static Discord.Embed BuildEditorEmbed(string target)
+        {
+            string msg = EditStore.Get(target, "msg");
+            string title = EditStore.Get(target, "title");
+            string image = EditStore.Get(target, "image");
+            string logo = EditStore.Get(target, "logo");
+            string footer = EditStore.Get(target, "footer");
+
+            var eb = new Discord.EmbedBuilder()
+                .WithColor(new Discord.Color(124, 58, 237))
+                .WithTitle($"\u270F\uFE0F Editor — /{target}")
+                .WithDescription("Current content. Use the buttons below to change it.")
+                .AddField("Title", string.IsNullOrWhiteSpace(title) ? "*(default)*" : "```" + title + "```", false)
+                .AddField("Message", string.IsNullOrWhiteSpace(msg) ? "*(default)*" : "```" + Trunc(msg, 900) + "```", false)
+                .AddField("Image URL", string.IsNullOrWhiteSpace(image) ? "*(default banner)*" : "```" + Trunc(image, 200) + "```", true)
+                .AddField("Logo URL", string.IsNullOrWhiteSpace(logo) ? "*(default logo)*" : "```" + Trunc(logo, 200) + "```", true);
+            if (!string.IsNullOrWhiteSpace(footer)) eb.AddField("Footer", "```" + footer + "```", false);
+            return eb.Build();
+        }
+
+        private static string Trunc(string s, int n) => s.Length > n ? s.Substring(0, n - 3) + "..." : s;
+
+        private static Discord.MessageComponent EditorButtons(string target)
+        {
+            return new Discord.ComponentBuilder()
+                .WithButton("\uD83D\uDCDD Message", "edit_msg:" + target, Discord.ButtonStyle.Primary)
+                .WithButton("Title", "edit_title:" + target, Discord.ButtonStyle.Secondary)
+                .WithButton("\uD83D\uDCF7 Image", "edit_image:" + target, Discord.ButtonStyle.Secondary)
+                .WithButton("Logo", "edit_logo:" + target, Discord.ButtonStyle.Secondary)
+                .WithButton("Footer", "edit_footer:" + target, Discord.ButtonStyle.Secondary)
+                .WithButton("\uD83D\uDC41 Preview", "edit_preview:" + target, Discord.ButtonStyle.Success)
+                .WithButton("\u21A9 Reset", "edit_reset:" + target, Discord.ButtonStyle.Danger)
+                .Build();
+        }
+
+        private static async Task SendEditor(SocketSlashCommand cmd, string target)
+        {
+            if (!IsAdminUser(cmd)) { await cmd.RespondAsync("\u26D4 Admin role required.", ephemeral: true); return; }
+            await cmd.RespondAsync(embed: BuildEditorEmbed(target), components: EditorButtons(target), ephemeral: true);
+        }
+
+        private static async Task OnModal(SocketModal modal)
+        {
+            try
+            {
+                // ids: editmodal_<part>:<target>
+                var parts = modal.Data.CustomId.Split(':');
+                string target = parts.Length > 1 ? parts[1] : "dtf";
+                string part = modal.Data.CustomId.StartsWith("editmodal_") ? modal.Data.CustomId.Substring(10).Split(':')[0] : "";
+                string value = modal.Data.Components.FirstOrDefault()?.Value;
+
+                EditStore.Set(target, part, value);
+                await modal.RespondAsync(
+                    embed: BuildEditorEmbed(target),
+                    components: EditorButtons(target),
+                    ephemeral: true);
+            }
+            catch (Exception ex)
+            {
+                try { await modal.RespondAsync($"\u2717 {ex.Message}", ephemeral: true); } catch { }
             }
         }
 
