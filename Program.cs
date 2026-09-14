@@ -36,13 +36,31 @@ namespace DTFBot
             });
 
             // ---- keep-alive web server (lets Render free tier host this 24/7) ----
+            // runs in background; if the port is taken (e.g. second instance), pick a random free one
             var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
             var wbuilder = WebApplication.CreateBuilder(args);
-            wbuilder.WebHost.UseUrls("http://0.0.0.0:" + port);
+            wbuilder.WebHost.UseUrls("http://127.0.0.1:" + port);
             var wapp = wbuilder.Build();
             wapp.MapGet("/", () => Results.Text("DTF Bot alive"));
             wapp.MapGet("/health", () => Results.Json(new { alive = true, bot = _client?.CurrentUser?.Username ?? "starting" }));
-            _ = wapp.RunAsync();
+            _ = Task.Run(async () =>
+            {
+                try { await wapp.RunAsync(); }
+                catch (IOException)
+                {
+                    // port busy — another instance owns it; retry on a random port so we still boot
+                    try
+                    {
+                        var wb2 = WebApplication.CreateBuilder(args);
+                        wb2.WebHost.UseUrls("http://127.0.0.1:0");
+                        var wa2 = wb2.Build();
+                        wa2.MapGet("/", () => Results.Text("DTF Bot alive"));
+                        await wa2.RunAsync();
+                    }
+                    catch { }
+                }
+                catch { }
+            });
 
             // self-ping the public URL every 10 min so Render never sleeps
             var selfUrl = Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL");
@@ -148,7 +166,7 @@ namespace DTFBot
                 .AddField("\u2764\uFE0F Ang rules ng barrio",
                     "Respeto. Loyalty. Walang scam.\n" +
                     "Dito walang palusot — ang nag-share ng key, permanently banned.", false)
-                .WithImageUrl("https://dtf-license.onrender.com/assets/banner.png")
+                .WithImageUrl("https://dtf-license.onrender.com/assets/banner.png?v=2")
                 .WithFooter("DTF \u00b7 dtf-license.onrender.com \u00b7 welcome to the barrio")
                 .Build();
         }
@@ -217,7 +235,7 @@ namespace DTFBot
                 .WithColor(new Discord.Color(124, 58, 237))
                 .WithTitle("DTF")
                 .WithUrl(base_)
-                .WithThumbnailUrl(base_ + "/assets/logo.png")
+                .WithThumbnailUrl(base_ + "/assets/logo.png?v=2")
                 .WithDescription("**Your PC remembers everything. DTF makes it forget.**\n\n" +
                     "50+ one-click cleaners that wipe activity logs, forensic artifacts and junk — then cleans its own tracks on exit.\n\n" +
                     "Type **/features** for the full cleaner list\n" +
@@ -228,7 +246,7 @@ namespace DTFBot
                     "• `₱ 1200 | Lifetime`", false)
                 .AddField("◆ HOW TO BUY",
                     "Click **PURCHASE HERE** → a private ticket opens → pay GCash/Maya → key drops in your ticket.", false)
-                .WithImageUrl(base_ + "/assets/banner.png")
+                .WithImageUrl(base_ + "/assets/banner.png?v=2")
                 .Build();
         }
 
@@ -237,7 +255,7 @@ namespace DTFBot
             return new Discord.EmbedBuilder()
                 .WithColor(new Discord.Color(124, 58, 237))
                 .WithTitle("DTF — FEATURES")
-                .WithThumbnailUrl("https://dtf-license.onrender.com/assets/logo.png")
+                .WithThumbnailUrl("https://dtf-license.onrender.com/assets/logo.png?v=2")
                 .WithDescription("Everything DTF can clean — 50+ one-click buttons.")
                 .AddField("◆ FEATURES",
                     "```Windows Temp\n" +
@@ -265,7 +283,7 @@ namespace DTFBot
                     "Exit Auto-Clean\n" +
                     "Self-Destruct\n" +
                     "Anti-Screenshot```", false)
-                .WithImageUrl("https://dtf-license.onrender.com/assets/banner.png")
+                .WithImageUrl("https://dtf-license.onrender.com/assets/banner.png?v=2")
                 .WithFooter("/howitworks — what each cleaner does")
                 .Build();
         }
@@ -275,7 +293,7 @@ namespace DTFBot
             return new Discord.EmbedBuilder()
                 .WithColor(new Discord.Color(124, 58, 237))
                 .WithTitle("DTF — HOW IT WORKS")
-                .WithThumbnailUrl("https://dtf-license.onrender.com/assets/logo.png")
+                .WithThumbnailUrl("https://dtf-license.onrender.com/assets/logo.png?v=2")
                 .WithDescription("Every button in the app, explained.")
                 .AddField("🧹 Core Cleanup",
                     "The everyday stuff that slows your PC and leaves trails.\n" +
@@ -315,7 +333,7 @@ namespace DTFBot
                     "• **Exit Auto-Clean** — wipes its own run-traces on close\n" +
                     "• **Self-Destruct** — one button deletes DTF completely\n" +
                     "• **Anti-Screenshot** — invisible to screen captures", false)
-                .WithImageUrl("https://dtf-license.onrender.com/assets/banner.png")
+                .WithImageUrl("https://dtf-license.onrender.com/assets/banner.png?v=2")
                 .WithFooter("/dtf — showcase and pricelist")
                 .Build();
         }
