@@ -81,6 +81,26 @@ namespace DTFBot
 
             await _client.LoginAsync(Discord.TokenType.Bot, Cfg.BotToken);
             await _client.StartAsync();
+
+            // gateway watchdog: if READY never arrives (silent drop on cloud hosts),
+            // restart the client so the bot recovers by itself
+            _ = Task.Run(async () =>
+            {
+                while (true)
+                {
+                    await Task.Delay(60_000);
+                    try
+                    {
+                        if (_client.ConnectionState == Discord.ConnectionState.Connected && _client.CurrentUser != null) continue;
+                        Console.WriteLine("[bot] gateway not ready - restarting client");
+                        await _client.StopAsync();
+                        await Task.Delay(3_000);
+                        await _client.StartAsync();
+                    }
+                    catch (Exception ex) { Console.WriteLine("[bot] gateway restart: " + ex.Message); }
+                }
+            });
+
             await Task.Delay(-1);
         }
 
@@ -130,6 +150,9 @@ namespace DTFBot
                         .AddChoice("dtf showcase", "dtf")
                         .AddChoice("features list", "features")
                         .AddChoice("how it works", "howitworks"))
+                    .Build(),
+                new Discord.SlashCommandBuilder().WithName("message")
+                    .WithDescription("Create a custom announcement with image + preview, then pin it (admin)")
                     .Build(),
             };
             await guild.BulkOverwriteApplicationCommandAsync(cmds.ToArray());
@@ -495,6 +518,14 @@ namespace DTFBot
                         return;
                     }
 
+                    case "message":
+                    {
+                        if (!IsAdminUser(cmd)) { await cmd.RespondAsync("\u26D4 Admin role required.", ephemeral: true); return; }
+                        if (!_drafts.ContainsKey(cmd.User.Id)) _drafts[cmd.User.Id] = new MsgDraft();
+                        await cmd.RespondAsync(embed: BuildMsgBuilder(_drafts[cmd.User.Id]), components: MsgBuilderButtons(), ephemeral: true);
+                        return;
+                    }
+
                     case "vouch":
                     {
                         await cmd.DeferAsync();
@@ -546,6 +577,49 @@ namespace DTFBot
         private static async Task OnButton(SocketMessageComponent cmd)
         {
             string cid = cmd.Data.CustomId ?? "";
+
+            // ----- /message builder buttons: msgbuilder_<action> -----
+            if (cid.StartsWith("msgbuilder_"))
+            {
+                if (!IsAdminUser(cmd)) { await cmd.RespondAsync("\u26D4 Admin role required.", ephemeral: true); return; }
+                if (!_drafts.TryGetValue(cmd.User.Id, out var d)) d = _drafts[cmd.User.Id] = new MsgDraft();
+
+                switch (cid.Substring(11))
+                {
+                    case "title":
+                    case "body":
+                    case "image":
+                    {
+                        string label = cid.EndsWith("title") ? "Title" : cid.EndsWith("image") ? "Image URL (https://... direct link to png/jpg)" : "Message text (Discord markdown allowed)";
+                        var modal = new Discord.ModalBuilder()
+                            .WithCustomId("msgmodal_" + cid.Substring(11))
+                            .WithTitle("Message Builder")
+                            .AddTextInput(label, "msgmodal_" + cid.Substring(11),
+                                cid.EndsWith("body") ? Discord.TextInputStyle.Paragraph : Discord.TextInputStyle.Short,
+                                null, null, cid.EndsWith("body") ? 2000 : 800, false);
+                        await cmd.RespondWithModalAsync(modal.Build());
+                        return;
+                    }
+                    case "preview":
+                        await cmd.RespondAsync(embed: BuildDraftPreview(d), ephemeral: true);
+                        return;
+                    case "post":
+                        await cmd.DeferAsync(ephemeral: true);
+                        var posted = await cmd.Channel.SendMessageAsync(embed: BuildDraftPreview(d));
+                        try { await posted.PinAsync(); } catch { }
+                        _drafts.Remove(cmd.User.Id);
+                        await cmd.FollowupAsync("\uD83D\uDCCC Posted and pinned in this channel.", ephemeral: true);
+                        return;
+                    case "reset":
+                        _drafts[cmd.User.Id] = new MsgDraft();
+                        await cmd.UpdateAsync(m => { m.Embed = BuildMsgBuilder(_drafts[cmd.User.Id]); m.Components = MsgBuilderButtons(); });
+                        return;
+                    case "cancel":
+                        _drafts.Remove(cmd.User.Id);
+                        await cmd.RespondAsync("\uD83D\uDDED Builder closed — draft discarded.", ephemeral: true);
+                        return;
+                }
+            }
 
             // ----- editor buttons (edit_<part>:<target> and editmodal routing) -----
             if (cid.StartsWith("edit_") && cid.Contains(':'))
@@ -604,11 +678,63 @@ namespace DTFBot
             }
         }
 
+        // ---------------- /message custom announcement builder ----------------
+
+        private class MsgDraft
+        {
+            public string Title = "";
+            public string Body = "";
+            public string Image = "";
+        }
+
+        private static readonly Dictionary<ulong, MsgDraft> _drafts = new();
+
+        private static Discord.Embed BuildMsgBuilder(MsgDraft d)
+        {
+            var eb = new Discord.EmbedBuilder()
+                .WithColor(new Discord.Color(124, 58, 237))
+                .WithTitle("\uD83D\uDCDD Message Builder")
+                .WithDescription(
+                    "Create a custom announcement, preview it, then **Post + Pin** it in any channel." +
+                    "\n\u2003\u2003\u2003*This panel is only visible to you.*")
+                .AddField("Title", string.IsNullOrWhiteSpace(d.Title) ? "*(not set)*" : "```" + Trunc(d.Title, 200) + "```", false)
+                .AddField("Message", string.IsNullOrWhiteSpace(d.Body) ? "*(not set)*" : "```" + Trunc(d.Body, 900) + "```", false)
+                .AddField("Image", string.IsNullOrWhiteSpace(d.Image) ? "*(none)*" : "```" + Trunc(d.Image, 200) + "```", false);
+            return eb.Build();
+        }
+
+        private static Discord.MessageComponent MsgBuilderButtons()
+        {
+            return new Discord.ComponentBuilder()
+                .WithButton("Title", "msgbuilder_title", Discord.ButtonStyle.Primary)
+                .WithButton("\uD83D\uDCDD Message", "msgbuilder_body", Discord.ButtonStyle.Primary)
+                .WithButton("\uD83D\uDCF7 Image URL", "msgbuilder_image", Discord.ButtonStyle.Secondary)
+                .WithButton("\uD83D\uDC41 Preview", "msgbuilder_preview", Discord.ButtonStyle.Success)
+                .WithButton("\uD83D\uDCCC Post + Pin", "msgbuilder_post", Discord.ButtonStyle.Danger)
+                .WithButton("\uD83D\uDD01 Reset", "msgbuilder_reset", Discord.ButtonStyle.Secondary)
+                .WithButton("\u274C Cancel", "msgbuilder_cancel", Discord.ButtonStyle.Secondary)
+                .Build();
+        }
+
+        private static Discord.Embed BuildDraftPreview(MsgDraft d)
+        {
+            var eb = new Discord.EmbedBuilder().WithColor(new Discord.Color(139, 92, 246));
+            if (!string.IsNullOrWhiteSpace(d.Title)) eb.WithTitle(d.Title);
+            if (!string.IsNullOrWhiteSpace(d.Body)) eb.WithDescription(d.Body);
+            if (!string.IsNullOrWhiteSpace(d.Image)) eb.WithImageUrl(d.Image);
+            if (string.IsNullOrWhiteSpace(d.Title) && string.IsNullOrWhiteSpace(d.Body) && string.IsNullOrWhiteSpace(d.Image))
+                eb.WithDescription("*(empty draft — set a title or message first)*");
+            return eb.Build();
+        }
+
         // ---------------- /edit message editor ----------------
 
         private static readonly string[] _editableCommands = { "dtf", "features", "howitworks" };
 
         private static bool IsAdminUser(SocketSlashCommand cmd)
+            => Cfg.AdminRoleId == 0 || (cmd.User is SocketGuildUser gu && gu.Roles.Any(r => r.Id == Cfg.AdminRoleId));
+
+        private static bool IsAdminUser(Discord.WebSocket.SocketMessageComponent cmd)
             => Cfg.AdminRoleId == 0 || (cmd.User is SocketGuildUser gu && gu.Roles.Any(r => r.Id == Cfg.AdminRoleId));
 
         private static Discord.Embed BuildEditorEmbed(string target)
@@ -656,11 +782,26 @@ namespace DTFBot
         {
             try
             {
-                // ids: editmodal_<part>:<target>
+                string value = modal.Data.Components.FirstOrDefault()?.Value;
+
+                // ----- /message builder modals: msgmodal_<part> -----
+                if (modal.Data.CustomId.StartsWith("msgmodal_"))
+                {
+                    if (!_drafts.TryGetValue(modal.User.Id, out var d)) d = _drafts[modal.User.Id] = new MsgDraft();
+                    switch (modal.Data.CustomId.Substring(9))
+                    {
+                        case "title": d.Title = value ?? ""; break;
+                        case "body": d.Body = value ?? ""; break;
+                        case "image": d.Image = value ?? ""; break;
+                    }
+                    await modal.RespondAsync(embed: BuildMsgBuilder(d), components: MsgBuilderButtons(), ephemeral: true);
+                    return;
+                }
+
+                // ----- /edit editor modals: editmodal_<part>:<target> -----
                 var parts = modal.Data.CustomId.Split(':');
                 string target = parts.Length > 1 ? parts[1] : "dtf";
                 string part = modal.Data.CustomId.StartsWith("editmodal_") ? modal.Data.CustomId.Substring(10).Split(':')[0] : "";
-                string value = modal.Data.Components.FirstOrDefault()?.Value;
 
                 EditStore.Set(target, part, value);
                 await modal.RespondAsync(
