@@ -15,6 +15,9 @@ namespace DTFBot
         private static HashSet<string> _seenLogs = new HashSet<string>();
         private static bool _firstPoll = true;
 
+        /// DTF logo shown on every embed the bot posts
+        private const string LogoUrl = "https://dtf-license.onrender.com/assets/logo.png?v=2";
+
         private static async Task Main(string[] args)
         {
             Cfg.LoadFile();
@@ -257,6 +260,7 @@ namespace DTFBot
                         .WithColor(result.Contains("wrong") || result.Contains("ban") || result.Contains("rate")
                             ? new Discord.Color(239, 68, 68)
                             : new Discord.Color(139, 92, 246))
+                        .WithThumbnailUrl(EditStore.Get("dtf", "logo") ?? LogoUrl)
                         .WithTitle($"{icon} DTF activation attempt")
                         .AddField("Result", result, true)
                         .AddField("Client", client, true)
@@ -469,6 +473,7 @@ namespace DTFBot
                         }
                         var embed = new Discord.EmbedBuilder()
                             .WithColor(new Discord.Color(139, 92, 246))
+                            .WithThumbnailUrl(EditStore.Get("dtf", "logo") ?? LogoUrl)
                             .WithTitle($"🔑 Keys ({keys.GetArrayLength()} total)")
                             .WithDescription(sb.ToString())
                             .Build();
@@ -490,6 +495,7 @@ namespace DTFBot
                         }
                         var embed = new Discord.EmbedBuilder()
                             .WithColor(new Discord.Color(139, 92, 246))
+                            .WithThumbnailUrl(EditStore.Get("dtf", "logo") ?? LogoUrl)
                             .WithTitle("👁 Last 15 access attempts")
                             .WithDescription(sb.Length > 0 ? sb.ToString() : "no attempts yet")
                             .Build();
@@ -567,6 +573,7 @@ namespace DTFBot
                         }
                         var embed = new Discord.EmbedBuilder()
                             .WithColor(new Discord.Color(34, 197, 94))
+                            .WithThumbnailUrl(EditStore.Get("dtf", "logo") ?? LogoUrl)
                             .WithTitle("📊 DTF Stats")
                             .AddField("Keys", total.ToString(), true)
                             .AddField("Active", active.ToString(), true)
@@ -732,7 +739,7 @@ namespace DTFBot
 
         private static Discord.Embed BuildDraftPreview(MsgDraft d)
         {
-            var eb = new Discord.EmbedBuilder().WithColor(new Discord.Color(139, 92, 246));
+            var eb = new Discord.EmbedBuilder().WithColor(new Discord.Color(139, 92, 246)).WithThumbnailUrl(LogoUrl);
             if (!string.IsNullOrWhiteSpace(d.Title)) eb.WithTitle(d.Title);
             if (!string.IsNullOrWhiteSpace(d.Body)) eb.WithDescription(d.Body);
             if (!string.IsNullOrWhiteSpace(d.Image)) eb.WithImageUrl(d.Image);
@@ -899,6 +906,7 @@ namespace DTFBot
 
                 var welcome = new Discord.EmbedBuilder()
                     .WithColor(new Discord.Color(139, 92, 246))
+                    .WithThumbnailUrl(EditStore.Get("ticketpanel", "logo") ?? LogoUrl)
                     .WithTitle($"🎫 Ticket — {cmd.User.Username}")
                     .WithDescription(
                         $"Welcome {cmd.User.Mention}!\n\n" +
