@@ -149,10 +149,14 @@ namespace DTFBot
                         .WithName("command").WithDescription("which message to edit").WithType(Discord.ApplicationCommandOptionType.String).WithRequired(true)
                         .AddChoice("dtf showcase", "dtf")
                         .AddChoice("features list", "features")
-                        .AddChoice("how it works", "howitworks"))
+                        .AddChoice("how it works", "howitworks")
+                        .AddChoice("ticket panel", "ticketpanel"))
                     .Build(),
                 new Discord.SlashCommandBuilder().WithName("message")
                     .WithDescription("Create a custom announcement with image + preview, then pin it (admin)")
+                    .Build(),
+                new Discord.SlashCommandBuilder().WithName("ticketpanel")
+                    .WithDescription("Post the Create-ticket panel in this channel (admin)")
                     .Build(),
             };
             await guild.BulkOverwriteApplicationCommandAsync(cmds.ToArray());
@@ -193,8 +197,7 @@ namespace DTFBot
                     "50+ one-click cleaners that wipe forensic traces, browser history, memory and junk — then cleans its own tracks on exit.", false)
                 .AddField("\uD83D\uDCCD Start here",
                     "\u2022 Read **#rules** — bawal ang key sharing at scamming\n" +
-                    "\u2022 Type **/dtf** anywhere — full showcase + pricelist\n" +
-                    "\u2022 Click **PURCHASE HERE** — private ticket opens, doon ang bayaran at key", false)
+                    "\u2022 Go to the ticket channel and click **🎫 Create ticket** — private ticket opens, doon ang bayaran at key", false)
                 .AddField("\uD83D\uDCB0 Plans",
                     "\u2022 `\u20B1400` — 30 days\n\u2022 `\u20B1700` — 90 days\n\u2022 `\u20B11200` — Lifetime", false)
                 .AddField("\u2764\uFE0F Ang rules ng barrio",
@@ -526,6 +529,16 @@ namespace DTFBot
                         return;
                     }
 
+                    case "ticketpanel":
+                    {
+                        if (!IsAdminUser(cmd)) { await cmd.RespondAsync("\u26D4 Admin role required.", ephemeral: true); return; }
+                        await cmd.DeferAsync(ephemeral: true);
+                        var panel = await cmd.Channel.SendMessageAsync(embed: BuildTicketPanel(), components: TicketPanelButtons());
+                        try { await panel.PinAsync(); } catch { }
+                        await cmd.FollowupAsync("\uD83C\uDFAB Ticket panel posted and pinned in this channel.", ephemeral: true);
+                        return;
+                    }
+
                     case "vouch":
                     {
                         await cmd.DeferAsync();
@@ -634,6 +647,7 @@ namespace DTFBot
                     {
                         "features" => BuildFeatures(),
                         "howitworks" => BuildHowItWorks(),
+                        "ticketpanel" => BuildTicketPanel(),
                         _ => BuildShowcase()
                     };
                     await cmd.RespondAsync(embed: preview, ephemeral: true);
@@ -815,7 +829,27 @@ namespace DTFBot
             }
         }
 
-        // ---------------- ticket system ----------------
+        // ---------------- ticket panel (Ticket-Tool style) ----------------
+
+        private static Discord.Embed BuildTicketPanel()
+        {
+            return new Discord.EmbedBuilder()
+                .WithColor(new Discord.Color(124, 58, 237))
+                .WithTitle(EditStore.Get("ticketpanel", "title") ?? "MENU")
+                .WithDescription(EditStore.Get("ticketpanel", "msg") ??
+                    "To create a ticket use the Create ticket button below.")
+                .WithThumbnailUrl(EditStore.Get("ticketpanel", "logo") ?? "https://dtf-license.onrender.com/assets/logo.png?v=2")
+                .WithImageUrl(string.IsNullOrWhiteSpace(EditStore.Get("ticketpanel", "image")) ? null : EditStore.Get("ticketpanel", "image"))
+                .WithFooter(string.IsNullOrWhiteSpace(EditStore.Get("ticketpanel", "footer")) ? null : EditStore.Get("ticketpanel", "footer"))
+                .Build();
+        }
+
+        private static Discord.MessageComponent TicketPanelButtons()
+        {
+            return new Discord.ComponentBuilder()
+                .WithButton("\uD83C\uDFAB Create ticket", "dtf_ticket_direct", Discord.ButtonStyle.Primary)
+                .Build();
+        }
 
         private static async Task CreateTicketAsync(SocketMessageComponent cmd)
         {

@@ -96,7 +96,7 @@ try {
 $rulesText = (
     '1. No key sharing or reselling - keys are locked to one PC. Sharing = permanent ban, blacklisted HWID, no refund.' + "`n" +
     '2. No fake payment receipts - scamming = instant ban, no appeals.' + "`n" +
-    '3. Purchases and support in tickets only - click PURCHASE HERE (use /dtf) and a private ticket opens. Do not DM staff.' + "`n" +
+    '3. Purchases and support in tickets only - click the Create ticket button in the ticket channel and a private ticket opens. Do not DM staff.' + "`n" +
     '4. No spam, no begging for free keys.' + "`n" +
     '5. One PC per key - new PC? Open a ticket for a HWID reset.' + "`n" +
     '6. Chargebacks = permanent blacklist.' + "`n" +
@@ -134,7 +134,7 @@ $dlBody = @{
     embeds = @(@{
         title = 'HOW TO GET DTF'
         color = $LILAC
-        description = '1. Buy in a ticket - use /dtf, click PURCHASE HERE' + "`n" +
+        description = '1. Buy in a ticket - click the Create ticket button in the ticket channel' + "`n" +
             '2. Pay GCash / Maya, send the receipt in your ticket' + "`n" +
             '3. Staff drops your key + the DTF build in the ticket' + "`n" +
             '4. Paste the key in DTF - it binds to your PC' + "`n`n" +
