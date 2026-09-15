@@ -40,7 +40,7 @@ namespace DTFBot
             // runs in background; if the port is taken (e.g. second instance), pick a random free one
             var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
             var wbuilder = WebApplication.CreateBuilder(args);
-            wbuilder.WebHost.UseUrls("http://127.0.0.1:" + port);
+            wbuilder.WebHost.UseUrls("http://0.0.0.0:" + port);
             var wapp = wbuilder.Build();
             wapp.MapGet("/", () => Results.Text("DTF Bot alive"));
             wapp.MapGet("/health", () => Results.Json(new { alive = true, bot = _client?.CurrentUser?.Username ?? "starting" }));
@@ -53,7 +53,7 @@ namespace DTFBot
                     try
                     {
                         var wb2 = WebApplication.CreateBuilder(args);
-                        wb2.WebHost.UseUrls("http://127.0.0.1:0");
+                        wb2.WebHost.UseUrls("http://0.0.0.0:0");
                         var wa2 = wb2.Build();
                         wa2.MapGet("/", () => Results.Text("DTF Bot alive"));
                         await wa2.RunAsync();
